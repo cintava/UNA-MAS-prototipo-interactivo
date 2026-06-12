@@ -234,12 +234,33 @@ body.vr-pointer, body.vr-pointer *{cursor:none !important}
 #gaze.press .gdot{width:7px;height:7px;background:#fff}
 
 @media (max-width:640px){
-  .panel{padding:26px 20px}
-  .hud .seg{padding:8px 12px}
+  .panel{padding:24px 16px;max-height:82vh;overflow-y:auto;border-radius:16px}
+  /* HUD del sistema arriba, compacto */
+  #sysHud{top:8px;right:8px;gap:6px}
+  #sysHud button{padding:7px 10px;font-size:10px;border-radius:8px}
+  /* HUD del juego DEBAJO de los botones del sistema, ancho completo */
+  .hud{
+    top:52px;left:8px;right:8px;transform:none;width:auto;
+    justify-content:space-between;border-radius:12px;
+  }
+  .hud .seg{padding:7px 6px;flex:1;gap:1px}
+  .hud .lbl{font-size:8px;letter-spacing:.8px;text-align:center}
   .hud .val{font-size:15px}
-  .cards{gap:10px}
-  .card{min-width:96px;padding:18px 8px;font-size:14px}
+  /* La escena deja lugar al HUD doble */
+  .scene{padding:110px 12px 16px;align-items:flex-start}
+  .scene .panel{margin-top:auto;margin-bottom:auto}
+  .cards{gap:8px}
+  .card{min-width:88px;padding:16px 6px;font-size:13px}
+  .card .ic svg{width:32px;height:32px}
   .dealer-bubble{display:none}
+  /* Botones apilados en modales y paneles para dedos */
+  .btn-row{flex-direction:column;gap:10px}
+  .btn-row .btn{width:100%}
+  .modal{padding:24px 18px;max-height:84vh;overflow-y:auto}
+  .modal p{font-size:15px;line-height:1.55}
+  .panel .step{font-size:10px;top:10px;right:14px}
+  .limit-list{font-size:14px;line-height:1.9}
+  #counter{display:none}
 }
 </style>
 </head>
@@ -367,7 +388,8 @@ body.vr-pointer, body.vr-pointer *{cursor:none !important}
       <div class="dots"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div>
     </div>
     <h2>¿Qué tipo de apuesta elegís?</h2>
-    <p class="sub">Elegí una opción para usar 1 ficha.</p>
+    <p class="sub" style="margin-bottom:12px">Elegí una opción para usar 1 ficha.</p>
+    <button class="btn ghost" style="margin-bottom:22px;padding:9px 20px;font-size:13px;min-height:auto;flex:none;min-width:auto;border-radius:20px" onclick="openModal('tutorial')">ⓘ &nbsp;¿Cómo se juega?</button>
     <div class="cards">
       <div class="card" onclick="bet(this)"><span class="ic">?</span>Par / Impar<small>paga 1:1</small></div>
       <div class="card" onclick="bet(this)"><span class="ic">◆</span>Color<small>paga 1:1</small></div>
@@ -486,6 +508,14 @@ const state = { name:'', time:null, chips:null, left:null, rounds:0, timeLeft:0,
 const entreRondas = ['casiganaste_er','dopamina','nearmiss','estres','ritmo','casigano','falacia'];
 
 const frases = {
+  tutorial: {
+    tag:'Tutorial · Tipos de apuesta',
+    txt:'<span style="display:block;text-align:left;font-size:0.92em;line-height:1.7">'+
+        '<strong style="color:var(--gold-light)">? &nbsp;Par / Impar</strong> — Apostás a que el número que salga sea par o impar. Tenés casi la mitad de chances de acertar. Si ganás, duplicás tu ficha (paga 1:1).<br><br>'+
+        '<strong style="color:var(--gold-light)">◆ &nbsp;Color</strong> — Apostás a que salga rojo o negro. Mismas chances que par/impar. También paga 1:1.<br><br>'+
+        '<strong style="color:var(--gold-light)"># &nbsp;Número pleno</strong> — Elegís UN número exacto entre el 0 y el 36. Es muy difícil acertar (1 chance en 37), pero si acertás pagan 35 veces tu ficha.<br><br>'+
+        '<em style="color:var(--txt-2);font-size:0.9em">Dato: el 0 verde no es ni par, ni impar, ni rojo, ni negro. Por él, el casino siempre tiene ventaja matemática — en todas las apuestas.</em></span>'
+  },
   casiganaste_er: {
     tag:'Entre rondas · Casi ganaste',
     txt:'<strong>CASI GANASTE.</strong> Tu cerebro acaba de liberar dopamina (igual que si hubieras ganado). Por eso da ganas de «una más». Pero la ruleta no recuerda que casi. <strong>La próxima ronda es 100% nueva.</strong>',
@@ -766,6 +796,8 @@ function toggleFS(){
 /* ====== GAZE INDICATOR: el puntero VR sigue al mouse ====== */
 (function(){
   const gaze=document.getElementById('gaze');
+  // Solo activar en dispositivos con puntero fino (mouse/trackpad), no en táctiles
+  if(!window.matchMedia('(pointer:fine)').matches){ return; }
   let hasMouse=false;
   document.addEventListener('mousemove',e=>{
     if(!hasMouse){
