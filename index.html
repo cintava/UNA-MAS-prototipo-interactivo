@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNA MÁS — Prototipo Interactivo VR</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0A0600;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Inter','Arial',sans-serif;
+    overflow:hidden;
+  }
+  /* ---- Contenedor de pantalla ---- */
+  #stage {
+    position:relative;
+    max-width:100vw;
+    max-height:100vh;
+  }
+  #stage img {
+    display:block;
+    max-width:100vw;
+    max-height:100vh;
+    width:auto;
+    height:auto;
+    user-select:none;
+    -webkit-user-drag:none;
+  }
+  .screen-wrap { position:relative; display:inline-block; transition:opacity .45s ease; }
+  .fade-out { opacity:0; }
+
+  /* ---- Hotspots ---- */
+  .hotspot {
+    position:absolute;
+    cursor:pointer;
+    border-radius:12px;
+    transition:box-shadow .25s ease, background .25s ease;
+  }
+  .hotspot:hover {
+    background:rgba(240,176,96,0.10);
+    box-shadow:0 0 24px rgba(207,133,49,0.45), inset 0 0 0 2px rgba(240,176,96,0.55);
+  }
+  .hotspot.selected {
+    background:rgba(240,176,96,0.14);
+    box-shadow:0 0 30px rgba(207,133,49,0.85), inset 0 0 0 3px #F0B060;
+  }
+  /* Modo calibración (tecla H) */
+  body.debug .hotspot {
+    background:rgba(207,133,49,0.18);
+    box-shadow:inset 0 0 0 2px #CF8531;
+  }
+  body.debug .hotspot::after {
+    content:attr(data-label);
+    position:absolute; top:2px; left:4px;
+    color:#F0B060; font-size:11px; font-weight:bold;
+    text-shadow:0 1px 2px #000;
+  }
+
+  /* ---- Pulso de click ---- */
+  .pulse {
+    position:fixed;
+    width:60px; height:60px;
+    border:3px solid #F0B060;
+    border-radius:50%;
+    pointer-events:none;
+    transform:translate(-50%,-50%) scale(.3);
+    opacity:1;
+    animation:pulseAnim .55s ease-out forwards;
+    z-index:50;
+  }
+  @keyframes pulseAnim {
+    to { transform:translate(-50%,-50%) scale(1.6); opacity:0; }
+  }
+
+  /* ---- HUD ---- */
+  #hud {
+    position:fixed; top:12px; right:12px;
+    display:flex; gap:8px; z-index:100;
+  }
+  #hud button {
+    background:rgba(26,15,5,0.85);
+    border:1.5px solid #CF8531;
+    color:#F0B060;
+    padding:8px 14px;
+    border-radius:10px;
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:.5px;
+    cursor:pointer;
+    transition:all .25s ease;
+  }
+  #hud button:hover { background:#CF8531; color:#1A0F05; }
+  #counter {
+    position:fixed; bottom:12px; left:50%;
+    transform:translateX(-50%);
+    color:rgba(240,176,96,0.55);
+    font-size:12px;
+    letter-spacing:2px;
+    z-index:100;
+    background:rgba(10,6,0,0.6);
+    padding:5px 14px;
+    border-radius:20px;
+    pointer-events:none;
+  }
+
+  /* ---- Pantalla final ---- */
+  #endScreen {
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:22px;
+    text-align:center;
+    padding:40px;
+    min-height:100vh;
+    width:100vw;
+  }
+  #endScreen h1 {
+    font-family:Georgia,serif;
+    font-weight:300;
+    font-size:clamp(34px,6vw,64px);
+    color:#F5EDD8;
+  }
+  #endScreen .gold { color:#CF8531; }
+  #endScreen p {
+    color:#B89A70;
+    font-size:clamp(14px,2vw,18px);
+    max-width:560px;
+    line-height:1.6;
+  }
+  #endScreen .stats {
+    font-family:'Courier New',monospace;
+    color:#CF8531;
+    font-size:clamp(14px,2vw,20px);
+    letter-spacing:1px;
+  }
+  #endScreen button {
+    margin-top:10px;
+    background:#CF8531;
+    border:none;
+    color:#1A0F05;
+    font-size:16px;
+    font-weight:bold;
+    padding:16px 38px;
+    border-radius:12px;
+    cursor:pointer;
+    letter-spacing:1px;
+    transition:all .25s ease;
+  }
+  #endScreen button:hover { background:#F0B060; transform:translateY(-3px); box-shadow:0 12px 26px rgba(207,133,49,.4); }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <button onclick="restart()">↺ REINICIAR</button>
+  <button id="fsBtn" onclick="toggleFS()">⛶ PANTALLA COMPLETA</button>
+</div>
+
+<div id="stage"></div>
+<div id="counter"></div>
+
+<div id="endScreen">
+  <h1>Una <span class="gold">más</span>… ¿o una menos?</h1>
+  <p>Esta fue una demostración del flujo de juego responsable de <strong>UNA MÁS</strong>:
+  límites configurados antes de jugar, mensajes de concientización entre rondas
+  y una salida clara cuando el límite se alcanza.</p>
+  <div class="stats">Sesión completada · Dinero real gastado: $0</div>
+  <p style="font-size:13px; color:#666;">Proyectos Audiovisuales Interactivos · FADU-UBA 2026<br>
+  Equipo Violeta — Cintia Avalos · Iván Iszczyk</p>
+  <button onclick="restart()">VOLVER A EMPEZAR</button>
+</div>
+
+<script>
+/* ================= CONFIGURACIÓN DE PANTALLAS =================
+   Cada hotspot: l, t, w, h en % de la imagen.
+   type: "next" avanza | "select" marca seleccionado | "end" va al final
+   goto: índice de pantalla destino (opcional, por defecto la siguiente)
+   Presioná la tecla H para ver/calibrar los hotspots.
+================================================================ */
+const screens = [
+  { img:"1.jpg",  hotspots:[ {l:0,t:0,w:100,h:100, type:"next", label:"continuar"} ] },
+  { img:"2.jpg",  hotspots:[ {l:25,t:62,w:50,h:13, type:"next", label:"Continuar"} ] },
+  { img:"3.jpg",  hotspots:[ {l:3.5,t:41,w:19,h:11, type:"next", label:"Ruleta"} ] },
+  { img:"4.jpg",  hotspots:[ {l:38,t:58,w:25,h:9,  type:"next", label:"Configurar límites"} ] },
+  { img:"5.jpg",  hotspots:[
+      {l:41.5,t:49,w:17,h:26, type:"select", label:"5 minutos"},
+      {l:55,t:78,w:22,h:9,   type:"next",   label:"Confirmar tiempo"} ] },
+  { img:"6.jpg",  hotspots:[
+      {l:40.5,t:50,w:19,h:13, type:"select", label:"5 fichas"},
+      {l:58,t:74,w:24,h:9,    type:"next",   label:"Confirmar fichas"} ] },
+  { img:"7.jpg",  hotspots:[ {l:41,t:33,w:19,h:20, type:"next", label:"Color"} ] },
+  { img:"8.jpg",  hotspots:[ {l:35,t:85,w:30,h:9, type:"next", label:"Comenzar apuesta"} ] },
+  { img:"9.jpg",  hotspots:[
+      {l:41,t:85,w:19,h:10, type:"next", label:"Una más"},
+      {l:77,t:58,w:16,h:9,  type:"end",  label:"Salir"} ] },
+  { img:"10.jpg", hotspots:[
+      {l:38,t:74,w:22,h:8, type:"end", label:"Recorrer el Strip"},
+      {l:75,t:56,w:18,h:7, type:"end", label:"Salir"} ] },
+];
+
+let current = 0;
+const stage = document.getElementById('stage');
+const counter = document.getElementById('counter');
+const endScreen = document.getElementById('endScreen');
+
+// Precargar imágenes
+screens.forEach(s => { const i = new Image(); i.src = s.img; });
+
+function render() {
+  endScreen.style.display = 'none';
+  stage.style.display = 'block';
+  const s = screens[current];
+  stage.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'screen-wrap';
+  const img = document.createElement('img');
+  img.src = s.img;
+  img.alt = 'Pantalla ' + (current+1);
+  wrap.appendChild(img);
+  s.hotspots.forEach(h => {
+    const el = document.createElement('div');
+    el.className = 'hotspot';
+    el.style.left = h.l + '%';
+    el.style.top = h.t + '%';
+    el.style.width = h.w + '%';
+    el.style.height = h.h + '%';
+    el.dataset.label = h.label;
+    el.addEventListener('click', ev => {
+      ev.stopPropagation();
+      clickPulse(ev.clientX, ev.clientY);
+      if (h.type === 'select') {
+        el.classList.add('selected');
+      } else if (h.type === 'end') {
+        setTimeout(showEnd, 350);
+      } else {
+        const dest = (h.goto !== undefined) ? h.goto : current + 1;
+        setTimeout(() => go(dest), 350);
+      }
+    });
+    wrap.appendChild(el);
+  });
+  stage.appendChild(wrap);
+  counter.textContent = (current+1) + ' / ' + screens.length;
+}
+
+function go(n) {
+  if (n >= screens.length) { showEnd(); return; }
+  const wrap = stage.querySelector('.screen-wrap');
+  if (wrap) {
+    wrap.classList.add('fade-out');
+    setTimeout(() => { current = n; render(); }, 420);
+  } else {
+    current = n; render();
+  }
+}
+
+function showEnd() {
+  stage.style.display = 'none';
+  counter.textContent = '';
+  endScreen.style.display = 'flex';
+}
+
+function restart() { current = 0; render(); }
+
+function clickPulse(x, y) {
+  const p = document.createElement('div');
+  p.className = 'pulse';
+  p.style.left = x + 'px';
+  p.style.top = y + 'px';
+  document.body.appendChild(p);
+  setTimeout(() => p.remove(), 600);
+}
+
+function toggleFS() {
+  const btn = document.getElementById('fsBtn');
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+    btn.textContent = '✕ SALIR';
+  } else {
+    document.exitFullscreen();
+    btn.textContent = '⛶ PANTALLA COMPLETA';
+  }
+}
+
+// Teclas: flechas para navegar, H para calibrar hotspots
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') go(current + 1);
+  if (e.key === 'ArrowLeft' && current > 0) go(current - 1);
+  if (e.key.toLowerCase() === 'h') document.body.classList.toggle('debug');
+});
+
+render();
+</script>
+</body>
+</html>
